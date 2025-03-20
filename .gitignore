@@ -50,5 +50,5 @@ rsconnect/
 
 .DS_Store
 
-#large data files
-ct_dorey_usa.csv
+#data files
+data/
