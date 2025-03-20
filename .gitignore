@@ -52,3 +52,18 @@ rsconnect/
 
 #data files
 data/
+data/analysis_plots/correlation_matrix.png
+data/analysis_plots/gam_smooths.png
+data/analysis_plots/spatial_autocorrelation.png
+data/analysis_plots/variance_partition.png
+data/processed/BeeDataNoiNatBiodiverseResults.xlsx
+data/processed/CWE.ppt.csv
+data/processed/CWE.ppt.xlsx
+data/processed/PrecipCWE15kmExport.csv
+data/processed/analysis_results.rds
+data/processed/bioclim_stack.rds
+data/processed/bioclim_values.rds
+data/processed/california_bioclim.csv
+data/processed/california_bioclim.rds
+data/BeeDataNoiNatio_PPTCWE.csv
+
