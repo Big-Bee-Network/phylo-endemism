@@ -1,17 +1,24 @@
 rm(list=ls())
 library(tidyverse)
 
-#updates to globi dataset, fowler datasets according to Henriquez Piskulich taxonomy. 
 #(Pseudopanurgus,Peponapis,Tetraloniella,Syntrichalonia,Cemolobus,Micralictoides)
 #Eucerini treated according to https://academic.oup.com/isd/article/7/4/3/7222693?login=true 
 #Pseudopanurgus https://resjournals.onlinelibrary.wiley.com/doi/epdf/10.1111/syen.12530
 #Micralictoides treated as subgenus of Duforea
 #Dufourea subg. Micralictoides Timberlake, 1939. Ent. Soc. Amer., Ann. 32: 397.
 
-globi_allNamesUpdated <- read_csv('modeling_data/globi_allNamesUpdated_Henriquez_Piskulich.csv')
+# Read the data
+all_genera <- read.table('../data/all-genera.txt', header = TRUE)
+
+# Extract unique rows and rename the column to 'genus'
+unique_genus <- unique(all_genera)
+colnames(unique_genus) <- "genus"
+
+# Write to CSV
+write.csv(unique_genus, "../data/unique_genus.csv", row.names = FALSE, , quote = FALSE)
 
 
-# Perform multiple generic replacements
+# Perform multiple generic replacements<- did not use this part of the code
 replace_species <- function(x) {
   x <- gsub("Pseudopanurgus", "Protandrena", x, ignore.case = TRUE)
   x <- gsub("Peponapis", "Xenoglossa", x, ignore.case = TRUE)
@@ -22,19 +29,10 @@ replace_species <- function(x) {
   return(x)
 }
 
-# Apply the replacement function to all columns in the dataframe
-globi_allNamesUpdated <- globi_allNamesUpdated %>%
+# Apply the replacement function to all columns in the dataframe for updated nomenclature
+unique_genera <- unique_genera %>%
   mutate_all(~ replace_species(.))
-
-# Apply the replacement function to all columns in the dataframe
-fowler_formatted <- fowler_formatted %>%
-  mutate_all(~ replace_species(.))
-
-# Apply the replacement function to all columns in the dataframe
-russell_formatted <- russell_formatted %>%
-  mutate_all(~ replace_species(.))
-
 
 #write updated dataframe
-write_csv(globi_allNamesUpdated,'modeling_data/globi_allNamesUpdated_Henriquez_Piskulich.csv')
+write_csv(unique_genera,'data/genera.csv')
 
