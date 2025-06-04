@@ -1,0 +1,249 @@
+---
+title: "BeeBDC Duplicate Status by Data Source Analysis"
+format: 
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    geometry: margin=1in
+    fontsize: 11pt
+    prefer-html: true
+date: today
+author: "Gretchen LeBuhn"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+library(knitr)
+library(DT)
+```
+
+# Overview
+
+This analysis examines the distribution of duplicate status classifications across different data sources in the Alarcon-Cruz *et al.* dataset.
+
+```{r}
+#| label: load-data
+
+# Load data
+data <- read.csv("~/GitHub/phylo-endemism/data/BeeDataNoiNat_Clean.csv", stringsAsFactors = FALSE)
+
+cat("Total records in dataset:", format(nrow(data), big.mark = ","), "\n")
+cat("Records with source information:", format(sum(!is.na(data$source) & data$source != ""), big.mark = ","), "\n")
+cat("Records with duplicate status:", format(sum(!is.na(data$duplicateStatus) & data$duplicateStatus != ""), big.mark = ","), "\n")
+```
+
+# Overall Duplicate Status Distribution
+
+```{r}
+#| label: overall-duplicate-status
+
+# Overall duplicate status summary
+overall_duplicate_summary <- data %>%
+  filter(!is.na(duplicateStatus) & duplicateStatus != "") %>%
+  count(duplicateStatus, sort = TRUE) %>%
+  mutate(percentage = round(n / sum(n) * 100, 1))
+
+kable(overall_duplicate_summary,
+      caption = "Overall Distribution of Duplicate Status Classifications",
+      col.names = c("Duplicate Status", "Records", "Percentage %"),
+      format.args = list(big.mark = ","))
+```
+
+# Data Sources Summary
+
+```{r}
+#| label: data-sources
+
+# Summary of data sources - unique specimens only
+source_summary <- data %>%
+  filter(!is.na(source) & source != "" &
+         (str_detect(tolower(duplicateStatus), "kept") | 
+          str_detect(tolower(duplicateStatus), "unique") |
+          duplicateStatus == "" |
+          is.na(duplicateStatus))) %>%
+  count(source, sort = TRUE) %>%
+  mutate(percentage = round(n / sum(n) * 100, 1)) %>%
+  rename(unique_specimens = n)
+
+cat("Number of data sources:", nrow(source_summary), "\n")
+cat("Total  specimens with source information:", format(sum(source_summary$unique_specimens), big.mark = ","), "\n\n")
+
+kable(source_summary,
+      caption = "Specimens by Data Source",
+      col.names = c("Data Source", "Unique Specimens", "Percentage %"),
+      format.args = list(big.mark = ","))
+```
+
+# Duplicate Status by Data Source
+
+```{r}
+#| label: duplicate-by-source-table
+
+# Create cross-tabulation of source vs duplicate status
+duplicate_by_source <- data %>%
+  filter(!is.na(source) & source != "" & 
+         !is.na(duplicateStatus) & duplicateStatus != "") %>%
+  count(source, duplicateStatus) %>%
+  pivot_wider(names_from = duplicateStatus, values_from = n, values_fill = 0)
+
+# Add row totals
+duplicate_by_source <- duplicate_by_source %>%
+  mutate(Total = rowSums(select(., -source))) %>%
+  arrange(desc(Total))
+
+# Display as table
+kable(duplicate_by_source,
+      caption = "Duplicate Status Counts by Data Source",
+      format.args = list(big.mark = ","))
+```
+
+# Visualization: Unique Specimens by Data Source
+
+```{r}
+#| label: visualization
+#| fig-width: 12
+#| fig-height: 6
+
+# Get top sources for visualization
+top_sources_for_plot <- source_summary %>%
+  head(15) %>%
+  pull(source)
+
+# Create bar chart for unique specimens by source
+plot_data <- source_summary %>%
+  head(15) %>%
+  mutate(source = reorder(source, unique_specimens))
+
+ggplot(plot_data, aes(x = source, y = unique_specimens)) +
+  geom_col(fill = "steelblue", alpha = 0.7) +
+  geom_text(aes(label = format(unique_specimens, big.mark = ",")), 
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  labs(
+    title = "Specimens by Data Source",
+    subtitle = "Top 15 sources (duplicates excluded)",
+    x = "Data Source",
+    y = "Number of Unique Specimens"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+# Institutional Analysis - Only specimen data used in analysis
+
+```{r}
+#| label: institution-extraction-unique
+
+# Function to extract institution codes from catalog numbers
+extract_institution <- function(catalog_num) {
+  if(is.na(catalog_num) || catalog_num == "") return(NA)
+  
+  # Extract alphabetic prefix before numbers
+  prefix <- str_extract(catalog_num, "^[A-Za-z]+")
+  return(prefix)
+}
+
+# Filter to only unique specimens (exclude duplicates)
+unique_specimens <- data %>%
+  filter(str_detect(tolower(duplicateStatus), "kept") | 
+         str_detect(tolower(duplicateStatus), "unique") |
+         duplicateStatus == "" |
+         is.na(duplicateStatus))
+
+# Apply institution extraction to unique specimens only
+unique_specimens$institution_code <- sapply(unique_specimens$catalogNumber, extract_institution)
+
+# Create institution lookup with common codes
+institution_lookup <- data.frame(
+  code = c("AMNH", "ANSP", "BBSL", "BMNH", "CAS", "EMEC", "FSCA", "INHS", 
+           "KUNHM", "LACM", "MCZ", "MSUC", "NMNH", "OSUC", "PCYU", "SDNHM", 
+           "SEMC", "TAMU", "UAIC", "UBCZ", "UCB", "UCDC", "UCMS", "UCRC", 
+           "UCD", "USNM", "WIRC", "YPM"),
+  institution = c("American Museum of Natural History",
+                  "Academy of Natural Sciences of Philadelphia", 
+                  "Bee Biology and Systematics Laboratory",
+                  "Natural History Museum, London",
+                  "California Academy of Sciences",
+                  "Essig Museum of Entomology, UC Berkeley",
+                  "Florida State Collection of Arthropods",
+                  "Illinois Natural History Survey",
+                  "Kansas University Natural History Museum",
+                  "Los Angeles County Museum",
+                  "Museum of Comparative Zoology, Harvard",
+                  "Michigan State University",
+                  "National Museum of Natural History",
+                  "Ohio State University Collection",
+                  "Pacific Coast Entomological Society",
+                  "San Diego Natural History Museum",
+                  "Snow Entomological Museum, Kansas",
+                  "Texas A&M University",
+                  "University of Arizona Insect Collection",
+                  "University of British Columbia",
+                  "University of California, Berkeley",
+                  "UC Davis Center for Population Biology",
+                  "UC Museum of Paleontology",
+                  "UC Riverside Entomology Collection",
+                  "UC Davis Entomology Collection",
+                  "US National Museum",
+                  "Wisconsin Insect Research Collection",
+                  "Yale Peabody Museum"),
+  stringsAsFactors = FALSE
+)
+
+# Count unique specimens by institution code
+institution_summary_unique <- unique_specimens %>%
+  filter(!is.na(institution_code) & institution_code != "") %>%
+  count(institution_code, name = "Unique_Specimens") %>%
+  left_join(institution_lookup, by = c("institution_code" = "code")) %>%
+  mutate(institution = ifelse(is.na(institution), 
+                             institution_code,  # Use the code itself instead of "Unknown Institution (code)"
+                             institution)) %>%
+  arrange(desc(Unique_Specimens))
+
+cat("Total institutions identified from unique specimens:", nrow(institution_summary_unique), "\n")
+cat("Unique specimens with institution codes:", 
+    format(sum(institution_summary_unique$Unique_Specimens), big.mark = ","), "\n")
+cat("Total unique specimens in dataset:", 
+    format(nrow(unique_specimens), big.mark = ","), "\n")
+```
+
+## Institution Summary Table - Specimens used in analysis only
+
+```{r}
+#| label: institution-table-unique
+
+# Create comprehensive institution table for unique specimens
+institution_table_unique <- institution_summary_unique %>%
+  mutate(Percentage = round(Unique_Specimens / sum(Unique_Specimens) * 100, 1)) %>%
+  select(institution_code, institution, Unique_Specimens, Percentage) %>%
+  rename("Institution Code" = institution_code,
+         "Institution Name" = institution,
+         "Number of Specimens" = Unique_Specimens,
+         "Percentage %" = Percentage)
+
+# For PDF output, use kable instead of datatable
+kable(institution_table_unique,
+      caption = "Institutional Sources of Bee Specimens used in analysis (Duplicates Excluded)",
+      format.args = list(big.mark = ","))
+
+# Show top 20 for summary
+cat("\n\nTop 20 Institutions by Number of Bee Specimens used in analysis (Unique):\n")
+kable(head(institution_table_unique, 20),
+      caption = "Top 20 Institutions by Number of Bee Specimens used in analysis (Unique)",
+      format.args = list(big.mark = ","))
+```
+
+```{r}
+#| label: conclusions
+#| echo: false
+
+total_sources <- nrow(source_summary)
+sources_with_duplicates <- length(unique(data$source[str_detect(tolower(data$duplicateStatus), "duplicate") & !is.na(data$source)]))
+```
