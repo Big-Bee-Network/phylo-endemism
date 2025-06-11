@@ -10,4 +10,10 @@ Henriquez Piskulich, Patricia Andrea; Hugall, Andrew F.; Stuart-Fox, Devi (2023)
 
 species.csv is the list of unique species names in the California data set.
 
+# data sets
+ 
+https://drive.google.com/drive/folders/1COAe9dKzeOMdBu3V-l22wBTmz0JK5DZj?usp=sharing
+ 
+https://drive.google.com/drive/folders/1kXXlIige-A0ruHTNc7nB1vaEJIny841B?usp=sharing 
+
 
